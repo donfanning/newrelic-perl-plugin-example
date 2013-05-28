@@ -4,13 +4,13 @@ use strict;
 use warnings;
 
 use JSON;
+use HTTP::Request;
 use LWP::UserAgent;
-use Hash::Merge qw(merge);
 use Data::Dumper;		# debugging, ok to remove when done.
 
 
 my $config_file="newrelic_config.txt";
-my $data_post_url="https://platform-api.newrelic.com/platform/v1/metrics";
+my $data_post_url="http://platform-api.newrelic.com/platform/v1/metrics";
 my ($license_key, $name, $guid, $version);
 
 
@@ -45,21 +45,24 @@ sub get_agent_data() {
 }
 
 sub get_component_data() {
-	my %component_hash = ( 
-		'name' => $name,
-		'guid' => $guid,
-		'duration' => 60, # FIXME hardcoded for now
-	);
-	$component_hash{'metrics'}{'Component/test/metric1[units]'} = 4.5;
-	$component_hash{'metrics'}{'Component/fieldtest/fieldsmetric1[otherunits]'} = (
-		'min' => 2,
-		'max' => 10,
-		'total' => 12,
-		'count' => 2,
-		'sum_of_squares' => 144
-	);
+	my %component_hash = (
+		'Component/test/metric1[units]' => 4.5,
+		'Component/fieldtest/fieldsmetric1[otherunits]' => {
+			'min' => 2,
+			'max' => 10,
+			'total' => 12,
+			'count' => 2,
+			'sum_of_squares' => 144
+		});
 	print "component hash: [" . Dumper(\%component_hash) . "]\n"; #DEBUG
-	return \%component_hash;
+	my @component_array = ( 
+		'name', $name,
+		'guid', $guid,
+		'duration', 60, # FIXME hardcoded for now
+		'metrics', \%component_hash
+	);
+	print "component array: [" . Dumper(\@component_array) . "]\n"; #DEBUG
+	return \@component_array;
 }
 
 ($license_key, $guid, $name, $version) = parse_config_file();
@@ -70,16 +73,20 @@ my %post_data = (
 print "post data: [" . Dumper(%post_data) . "]\n"; #DEBUG
 my $json_data = encode_json(\%post_data);
 print "json data: [" . Dumper($json_data) . "]\n"; #DEBUG
+my $req = HTTP::Request->new( 'POST', $data_post_url );
+$req->header( 'Content-Type' => 'application/json' );
+$req->header( 'X-License-Key' => $license_key);
+$req->header( 'Accept' => "application/json");
+$req->content( $json_data );
 
-#my $ua       = LWP::UserAgent->new();
-#$ua->default_header('X-License-Key' => $license_key);
-#$ua->ssl_opts( verify_hostname => 0 );
-#my $response = $ua->post( $data_post_url, $json_data );
-#if ($response->is_success()) {
-#	print $response->decoded_content();
-#} else {
-#	print $response->status_line . "\n";
-#}
+my $ua       = LWP::UserAgent->new();
+$ua->ssl_opts( verify_hostname => 0 );
+my $response = $ua->request($req);
+if ($response->is_success()) {
+	print $response->decoded_content();
+} else {
+	print $response->status_line . "\n";
+}
 
 	
 __END__
