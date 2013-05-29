@@ -1,0 +1,18 @@
+# new relic account license key (from https://rpm.newrelic.com/accounts/X)
+license_key=YOUR_LICENSE_KEY_HERE
+
+# enter guid in form of com.your_company.product.subproduct
+guid=
+
+# name of this instance
+name=example instance name
+
+# plugin version
+version=0.0.1
+
+# use ssl?
+ssl=false
+
+# proxy settings
+use_proxy=false
+proxy=http://localhost:9000
